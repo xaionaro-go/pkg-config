@@ -37,7 +37,7 @@ func (p *PkgConfig) Run(
 	args ...string,
 ) (_ret []string, _errMsg string, _exitCode int, _err error) {
 	defer func() {
-		logger.Debugf(ctx, "Run result: <%v> <%v> %d <%v>", strings.Join(_ret, " "), _errMsg, _exitCode, _err)
+		logger.Debugf(ctx, "Run <%s> result: <%v> <%v> %d <%v>", strings.Join(args, " "), strings.Join(_ret, " "), _errMsg, _exitCode, _err)
 	}()
 
 	output, errMsg, exitMsg, err := p.getFullOutput(ctx, args...)
