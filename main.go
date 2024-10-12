@@ -10,8 +10,8 @@ import (
 	"github.com/facebookincubator/go-belt/tool/logger"
 	xlogrus "github.com/facebookincubator/go-belt/tool/logger/implementation/logrus"
 	"github.com/sirupsen/logrus"
-	"github.com/xaionaro-go/pkg-config/pkg/consts"
-	"github.com/xaionaro-go/pkg-config/pkg/pkgconfig"
+	"github.com/xaionaro-go/pkg-config-wrapper/pkg/consts"
+	"github.com/xaionaro-go/pkg-config-wrapper/pkg/pkgconfig"
 )
 
 func ctx() context.Context {

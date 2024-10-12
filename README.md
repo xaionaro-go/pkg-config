@@ -9,7 +9,7 @@ Initially I had to implement this tool to make sure the CGo libraries I have as 
 # How to use
 
 ```sh
-go install github.com/xaionaro-go/pkg-config@latest
+go install github.com/xaionaro-go/pkg-config-wrapper@latest
 PKG_CONFIG_LIBS_FORCE_STATIC="libav*,libvlc" PKG_CONFIG="$(go env GOPATH | awk -F ':' '{print $1}')/bin/pkg-config" go build PATH/TO/MY/PROJECT
 ```
 

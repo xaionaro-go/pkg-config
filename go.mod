@@ -1,4 +1,4 @@
-module github.com/xaionaro-go/pkg-config
+module github.com/xaionaro-go/pkg-config-wrapper
 
 go 1.23.2
 
