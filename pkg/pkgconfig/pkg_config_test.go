@@ -1,14 +1,19 @@
 package pkgconfig
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
+	"github.com/facebookincubator/go-belt/tool/logger"
+	xlogrus "github.com/facebookincubator/go-belt/tool/logger/implementation/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
 
 type mockCommandExecutor struct {
 	ExecuteFunc func(
+		ctx context.Context,
 		cmd string,
 		args ...string,
 	) ([]byte, []byte, int, error)
@@ -17,17 +22,27 @@ type mockCommandExecutor struct {
 var _ CommandExecutor = (*mockCommandExecutor)(nil)
 
 func (e *mockCommandExecutor) Execute(
+	ctx context.Context,
 	cmd string,
 	args ...string,
 ) ([]byte, []byte, int, error) {
-	return e.ExecuteFunc(cmd, args...)
+	return e.ExecuteFunc(ctx, cmd, args...)
+}
+
+func ctx() context.Context {
+	ctx := context.Background()
+	ll := xlogrus.DefaultLogrusLogger()
+	ll.Formatter.(*logrus.TextFormatter).ForceColors = true
+	l := xlogrus.New(ll).WithLevel(logger.LevelTrace)
+	return logger.CtxWithLogger(ctx, l)
 }
 
 func TestPkgConfigRun(t *testing.T) {
+	ctx := ctx()
 	callCount := 0
 	pkgConfig := NewPkgConfig(
 		OptionCommandExecutor{&mockCommandExecutor{
-			ExecuteFunc: func(cmd string, args ...string) ([]byte, []byte, int, error) {
+			ExecuteFunc: func(_ context.Context, cmd string, args ...string) ([]byte, []byte, int, error) {
 				if cmd != pkgConfig {
 					return nil, nil, -1, fmt.Errorf("unexpected command '%s' (expected: '%s')", cmd, pkgConfig)
 				}
@@ -52,6 +67,7 @@ func TestPkgConfigRun(t *testing.T) {
 		OptionForceDynamicLinkPatterns([]string{"libvlc", "libandroid"}),
 	)
 	output, errMsg, exitCode, err := pkgConfig.Run(
+		ctx,
 		"--random-arg", "--libs-only-l", "libpthread", "libm", "libavcodec", "libvlc",
 	)
 	require.NoError(t, err)

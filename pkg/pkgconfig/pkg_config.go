@@ -1,10 +1,12 @@
 package pkgconfig
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
 	"github.com/IGLOU-EU/go-wildcard"
+	"github.com/facebookincubator/go-belt/tool/logger"
 )
 
 const (
@@ -31,7 +33,13 @@ func NewPkgConfig(
 	}
 }
 
-func (p *PkgConfig) Run(args ...string) ([]string, string, int, error) {
+func (p *PkgConfig) Run(
+	ctx context.Context,
+	args ...string,
+) (_ret []string, _errMsg string, _exitCode int, _err error) {
+	defer func() {
+		logger.Debugf(ctx, "Run result: <%v> <%v> %d <%v>", strings.Join(_ret, " "), _errMsg, _exitCode, _err)
+	}()
 	// TODO: split this function
 
 	isLibLink := false
@@ -44,13 +52,13 @@ func (p *PkgConfig) Run(args ...string) ([]string, string, int, error) {
 
 	if !isLibLink {
 		// not about linking, so we just passing-through as is
-		return p.runPkgConfig(args...)
+		return p.runPkgConfig(ctx, args...)
 	}
 
 	if len(p.ForceDynamicLinkPatterns) == 0 && len(p.ForceStaticLinkPatterns) == 0 {
 		// is about linking, but we do not have any rules about linking, so
 		// just passing-through as is
-		return p.runPkgConfig(args...)
+		return p.runPkgConfig(ctx, args...)
 	}
 
 	var flags []string
@@ -101,7 +109,7 @@ func (p *PkgConfig) Run(args ...string) ([]string, string, int, error) {
 		// is about linking, we do have rules about linking,
 		// but apparently they do not affect anything, so
 		// just passing-through as is.
-		return p.runPkgConfig(args...)
+		return p.runPkgConfig(ctx, args...)
 	}
 
 	var combinedErrorOutput []string
@@ -113,7 +121,7 @@ func (p *PkgConfig) Run(args ...string) ([]string, string, int, error) {
 		args[0] = "--static"
 		copy(args[1:], flags)
 		copy(args[len(flags)+1:], staticLibs)
-		output, stdErr, exitCode, err := p.runPkgConfig(args...)
+		output, stdErr, exitCode, err := p.runPkgConfig(ctx, args...)
 		if err != nil {
 			return nil, stdErr, exitCode, fmt.Errorf("unable to get the config for the non-static/dynamic-forced libs: %w", err)
 		}
@@ -168,7 +176,7 @@ func (p *PkgConfig) Run(args ...string) ([]string, string, int, error) {
 		args[0] = "--shared"
 		copy(args[1:], flags)
 		copy(args[len(flags)+1:], dynamicLibs)
-		output, stdErr, exitCode, err := p.runPkgConfig(args...)
+		output, stdErr, exitCode, err := p.runPkgConfig(ctx, args...)
 		if err != nil {
 			return nil, stdErr, exitCode, fmt.Errorf("unable to get the config for the non-static/dynamic-forced libs: %w", err)
 		}
@@ -198,7 +206,7 @@ func (p *PkgConfig) Run(args ...string) ([]string, string, int, error) {
 		args := make([]string, len(flags)+len(autoLibs))
 		copy(args, flags)
 		copy(args[len(flags):], autoLibs)
-		output, stdErr, exitCode, err := p.runPkgConfig(args...)
+		output, stdErr, exitCode, err := p.runPkgConfig(ctx, args...)
 		if err != nil {
 			return nil, stdErr, exitCode, fmt.Errorf("unable to get the config for the non-static/dynamic-forced libs: %w", err)
 		}
@@ -216,8 +224,11 @@ func (p *PkgConfig) Run(args ...string) ([]string, string, int, error) {
 	return combinedOutput, strings.Join(combinedErrorOutput, "\n"), 0, nil
 }
 
-func (p *PkgConfig) runPkgConfig(args ...string) ([]string, string, int, error) {
-	stdOut, stdErr, exitCode, err := p.CommandExecutor.Execute(pkgConfig, args...)
+func (p *PkgConfig) runPkgConfig(
+	ctx context.Context,
+	args ...string,
+) ([]string, string, int, error) {
+	stdOut, stdErr, exitCode, err := p.CommandExecutor.Execute(ctx, pkgConfig, args...)
 	return parsePkgConfigOutput(string(stdOut)), string(stdErr), exitCode, err
 }
 
