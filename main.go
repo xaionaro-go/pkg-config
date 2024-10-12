@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/facebookincubator/go-belt"
 	"github.com/facebookincubator/go-belt/tool/logger"
 	xlogrus "github.com/facebookincubator/go-belt/tool/logger/implementation/logrus"
 	"github.com/sirupsen/logrus"
@@ -40,11 +41,14 @@ func ctx() context.Context {
 }
 
 func main() {
+	defer os.Stderr.Sync()
+	defer os.Stdout.Sync()
 	if len(os.Args) < 2 {
 		panic("not enough arguments")
 	}
 
 	ctx := ctx()
+	defer belt.Flush(ctx)
 
 	var opts pkgconfig.Options
 
