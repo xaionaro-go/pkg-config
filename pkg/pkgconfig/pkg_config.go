@@ -32,6 +32,8 @@ func NewPkgConfig(
 }
 
 func (p *PkgConfig) Run(args ...string) ([]string, string, int, error) {
+	// TODO: split this function
+
 	isLibLink := false
 	for _, arg := range args {
 		switch arg {
@@ -102,23 +104,10 @@ func (p *PkgConfig) Run(args ...string) ([]string, string, int, error) {
 		return p.runPkgConfig(args...)
 	}
 
-	var combinedOutput []string
 	var combinedErrorOutput []string
 
-	if len(autoLibs) > 0 {
-		args := make([]string, len(flags)+len(autoLibs))
-		copy(args, flags)
-		copy(args[len(flags):], autoLibs)
-		output, stdErr, exitCode, err := p.runPkgConfig(args...)
-		if err != nil {
-			return nil, stdErr, exitCode, fmt.Errorf("unable to get the config for the non-static/dynamic-forced libs: %w", err)
-		}
-		combinedOutput = append(combinedOutput, output...)
-		if len(stdErr) > 0 {
-			combinedErrorOutput = append(combinedErrorOutput, stdErr)
-		}
-	}
-
+	alreadyHaveLib := map[string]struct{}{}
+	var outputForStaticLibs []string
 	if len(staticLibs) > 0 {
 		args := make([]string, len(flags)+1+len(staticLibs))
 		args[0] = "--static"
@@ -128,13 +117,52 @@ func (p *PkgConfig) Run(args ...string) ([]string, string, int, error) {
 		if err != nil {
 			return nil, stdErr, exitCode, fmt.Errorf("unable to get the config for the non-static/dynamic-forced libs: %w", err)
 		}
-		combinedOutput = append(combinedOutput, "-Wl,-Bstatic")
-		combinedOutput = append(combinedOutput, output...)
+
+		var processedOutput []string
+		libCount := 0
+		for _, word := range output {
+			if !strings.HasPrefix(word, "-l") {
+				processedOutput = append(processedOutput, word)
+				continue
+			}
+
+			libName := "lib" + word[2:]
+
+			forceDynamic := false
+			for _, pattern := range p.ForceDynamicLinkPatterns {
+				if wildcard.Match(pattern, libName) {
+					forceDynamic = true
+					break
+				}
+			}
+
+			if forceDynamic {
+				dynamicLibs = append(dynamicLibs, libName)
+				continue
+			}
+			processedOutput = append(processedOutput, word)
+			alreadyHaveLib[libName] = struct{}{}
+			libCount++
+		}
+		if libCount != 0 {
+			outputForStaticLibs = append([]string{"-Wl,-Bstatic"}, processedOutput...)
+		}
 		if len(stdErr) > 0 {
 			combinedErrorOutput = append(combinedErrorOutput, stdErr)
 		}
 	}
 
+	{
+		var newDynamicLibs []string
+		for _, lib := range dynamicLibs {
+			if _, ok := alreadyHaveLib[lib]; !ok {
+				newDynamicLibs = append(newDynamicLibs, lib)
+			}
+		}
+		dynamicLibs = newDynamicLibs
+	}
+
+	var outputForDynamicLibs []string
 	if len(dynamicLibs) > 0 {
 		args := make([]string, len(flags)+1+len(dynamicLibs))
 		args[0] = "--shared"
@@ -144,12 +172,46 @@ func (p *PkgConfig) Run(args ...string) ([]string, string, int, error) {
 		if err != nil {
 			return nil, stdErr, exitCode, fmt.Errorf("unable to get the config for the non-static/dynamic-forced libs: %w", err)
 		}
-		combinedOutput = append(combinedOutput, "-Wl,-Bdynamic")
-		combinedOutput = append(combinedOutput, output...)
+		for _, word := range output {
+			if strings.HasPrefix(word, "-l") {
+				alreadyHaveLib["lib"+word[2:]] = struct{}{}
+			}
+		}
+		outputForDynamicLibs = append([]string{"-Wl,-Bdynamic"}, output...)
 		if len(stdErr) > 0 {
 			combinedErrorOutput = append(combinedErrorOutput, stdErr)
 		}
 	}
+
+	{
+		var newAutoLibs []string
+		for _, lib := range autoLibs {
+			if _, ok := alreadyHaveLib[lib]; !ok {
+				newAutoLibs = append(newAutoLibs, lib)
+			}
+		}
+		autoLibs = newAutoLibs
+	}
+
+	var outputForAutoLibs []string
+	if len(autoLibs) > 0 {
+		args := make([]string, len(flags)+len(autoLibs))
+		copy(args, flags)
+		copy(args[len(flags):], autoLibs)
+		output, stdErr, exitCode, err := p.runPkgConfig(args...)
+		if err != nil {
+			return nil, stdErr, exitCode, fmt.Errorf("unable to get the config for the non-static/dynamic-forced libs: %w", err)
+		}
+		outputForAutoLibs = output
+		if len(stdErr) > 0 {
+			combinedErrorOutput = append(combinedErrorOutput, stdErr)
+		}
+	}
+
+	var combinedOutput []string
+	combinedOutput = append(combinedOutput, outputForAutoLibs...)
+	combinedOutput = append(combinedOutput, outputForStaticLibs...)
+	combinedOutput = append(combinedOutput, outputForDynamicLibs...)
 
 	return combinedOutput, strings.Join(combinedErrorOutput, "\n"), 0, nil
 }

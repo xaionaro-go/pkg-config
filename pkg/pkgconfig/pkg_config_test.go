@@ -35,28 +35,30 @@ func TestPkgConfigRun(t *testing.T) {
 				callCount++
 				switch callCount {
 				case 1:
-					require.Equal(t, []string{"--random-arg", "--libs-only-l", "libandroid"}, args, callCount)
-					return []byte("-landroid"), nil, 0, nil
-				case 2:
 					require.Equal(t, []string{"--static", "--random-arg", "--libs-only-l", "libavcodec"}, args, callCount)
-					return []byte("-lm -lavcodec"), []byte{}, 0, nil
+					return []byte("-lpthread -lx264 -lavcodec -landroid"), []byte{}, 0, nil
+				case 2:
+					require.Equal(t, []string{"--shared", "--random-arg", "--libs-only-l", "libvlc", "libandroid"}, args, callCount)
+					return []byte("-lvlc -landroid"), []byte{}, 0, nil
 				case 3:
-					require.Equal(t, []string{"--shared", "--random-arg", "--libs-only-l", "libvlc"}, args, callCount)
-					return []byte("-lvlc"), []byte{}, 0, nil
+					require.Equal(t, []string{"--random-arg", "--libs-only-l", "libm"}, args, callCount)
+					return []byte("-lm"), nil, 0, nil
 				default:
 					return nil, nil, -1, fmt.Errorf("the command executor was called too many times")
 				}
 			},
 		}},
 		OptionForceStaticLinkPatterns([]string{"libav*"}),
-		OptionForceDynamicLinkPatterns([]string{"libvlc"}),
+		OptionForceDynamicLinkPatterns([]string{"libvlc", "libandroid"}),
 	)
 	output, errMsg, exitCode, err := pkgConfig.Run(
-		"--random-arg", "--libs-only-l", "libavcodec", "libvlc", "libandroid",
+		"--random-arg", "--libs-only-l", "libpthread", "libm", "libavcodec", "libvlc",
 	)
 	require.NoError(t, err)
 	require.Equal(t, 0, exitCode)
 	require.Empty(t, errMsg, fmt.Sprintf("%X", errMsg))
-	require.Equal(t, []string{"-landroid", "-Wl,-Bstatic", "-lm", "-lavcodec", "-Wl,-Bdynamic", "-lvlc"}, output)
+	require.Equal(t, []string{
+		"-lm", "-Wl,-Bstatic", "-lpthread", "-lx264", "-lavcodec", "-Wl,-Bdynamic", "-lvlc", "-landroid",
+	}, output)
 	require.Equal(t, 3, callCount)
 }
