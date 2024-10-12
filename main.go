@@ -64,14 +64,12 @@ func main() {
 
 	pkgConfig := pkgconfig.NewPkgConfig(opts...)
 	result, errorMsg, exitCode, err := pkgConfig.Run(ctx, os.Args[1:]...)
-	if err != nil {
+	if _, err := fmt.Fprintf(os.Stderr, "%s", errorMsg); err != nil {
 		panic(err)
 	}
-	_, err = fmt.Fprintf(os.Stderr, "%s", errorMsg)
-	if err != nil {
+	if _, err := fmt.Fprintf(os.Stdout, "%s\n", strings.Join(result, " ")); err != nil {
 		panic(err)
 	}
-	_, err = fmt.Fprintf(os.Stdout, "%s\n", strings.Join(result, " "))
 	if err != nil {
 		panic(err)
 	}

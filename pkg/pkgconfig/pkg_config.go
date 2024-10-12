@@ -122,8 +122,11 @@ func (p *PkgConfig) Run(
 		copy(args[1:], flags)
 		copy(args[len(flags)+1:], staticLibs)
 		output, stdErr, exitCode, err := p.runPkgConfig(ctx, args...)
+		if len(stdErr) > 0 {
+			combinedErrorOutput = append(combinedErrorOutput, stdErr)
+		}
 		if err != nil {
-			return nil, stdErr, exitCode, fmt.Errorf("unable to get the config for the non-static/dynamic-forced libs: %w", err)
+			return nil, strings.Join(combinedErrorOutput, "\n"), exitCode, fmt.Errorf("unable to get the config for the static-forced libs: %w", err)
 		}
 
 		var processedOutput []string
@@ -155,9 +158,6 @@ func (p *PkgConfig) Run(
 		if libCount != 0 {
 			outputForStaticLibs = append([]string{"-Wl,-Bstatic"}, processedOutput...)
 		}
-		if len(stdErr) > 0 {
-			combinedErrorOutput = append(combinedErrorOutput, stdErr)
-		}
 	}
 
 	{
@@ -177,8 +177,11 @@ func (p *PkgConfig) Run(
 		copy(args[1:], flags)
 		copy(args[len(flags)+1:], dynamicLibs)
 		output, stdErr, exitCode, err := p.runPkgConfig(ctx, args...)
+		if len(stdErr) > 0 {
+			combinedErrorOutput = append(combinedErrorOutput, stdErr)
+		}
 		if err != nil {
-			return nil, stdErr, exitCode, fmt.Errorf("unable to get the config for the non-static/dynamic-forced libs: %w", err)
+			return nil, strings.Join(combinedErrorOutput, "\n"), exitCode, fmt.Errorf("unable to get the config for the dynamic-forced libs: %w", err)
 		}
 		for _, word := range output {
 			if strings.HasPrefix(word, "-l") {
@@ -186,9 +189,6 @@ func (p *PkgConfig) Run(
 			}
 		}
 		outputForDynamicLibs = append([]string{"-Wl,-Bdynamic"}, output...)
-		if len(stdErr) > 0 {
-			combinedErrorOutput = append(combinedErrorOutput, stdErr)
-		}
 	}
 
 	{
@@ -207,13 +207,13 @@ func (p *PkgConfig) Run(
 		copy(args, flags)
 		copy(args[len(flags):], autoLibs)
 		output, stdErr, exitCode, err := p.runPkgConfig(ctx, args...)
-		if err != nil {
-			return nil, stdErr, exitCode, fmt.Errorf("unable to get the config for the non-static/dynamic-forced libs: %w", err)
-		}
-		outputForAutoLibs = output
 		if len(stdErr) > 0 {
 			combinedErrorOutput = append(combinedErrorOutput, stdErr)
 		}
+		if err != nil {
+			return nil, strings.Join(combinedErrorOutput, "\n"), exitCode, fmt.Errorf("unable to get the config for the non-(dynamic/static)-forced libs: %w", err)
+		}
+		outputForAutoLibs = output
 	}
 
 	var combinedOutput []string
