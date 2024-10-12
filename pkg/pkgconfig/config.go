@@ -2,8 +2,9 @@ package pkgconfig
 
 type Config struct {
 	CommandExecutor          CommandExecutor
-	ForceStaticLinkPatterns  []string
-	ForceDynamicLinkPatterns []string
+	ForceStaticLinkPatterns  Patterns
+	ForceDynamicLinkPatterns Patterns
+	ErasePatterns            Patterns
 }
 
 type Option interface {
@@ -26,20 +27,26 @@ func (opts Options) Config() Config {
 	return cfg
 }
 
-type OptionForceStaticLinkPatterns []string
+type OptionForceStaticLinkPatterns Patterns
 
-func (o OptionForceStaticLinkPatterns) apply(c *Config) {
-	c.ForceStaticLinkPatterns = o
+func (opt OptionForceStaticLinkPatterns) apply(c *Config) {
+	c.ForceStaticLinkPatterns = Patterns(opt)
 }
 
-type OptionForceDynamicLinkPatterns []string
+type OptionForceDynamicLinkPatterns Patterns
 
-func (o OptionForceDynamicLinkPatterns) apply(c *Config) {
-	c.ForceDynamicLinkPatterns = o
+func (opt OptionForceDynamicLinkPatterns) apply(c *Config) {
+	c.ForceDynamicLinkPatterns = Patterns(opt)
 }
 
 type OptionCommandExecutor struct{ CommandExecutor }
 
 func (o OptionCommandExecutor) apply(c *Config) {
 	c.CommandExecutor = o.CommandExecutor
+}
+
+type OptionErasePatterns Patterns
+
+func (opt OptionErasePatterns) apply(c *Config) {
+	c.ErasePatterns = Patterns(opt)
 }

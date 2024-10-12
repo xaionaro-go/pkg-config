@@ -56,19 +56,20 @@ func TestPkgConfigRun(t *testing.T) {
 					require.Equal(t, []string{"--shared", "--random-arg", "--libs-only-l", "libvlc", "libandroid"}, args, callCount)
 					return []byte("-lvlc -landroid"), []byte{}, 0, nil
 				case 3:
-					require.Equal(t, []string{"--random-arg", "--libs-only-l", "libm"}, args, callCount)
-					return []byte("-lm"), nil, 0, nil
+					require.Equal(t, []string{"--random-arg", "--libs-only-l", "libm", "librandom"}, args, callCount)
+					return []byte("-lm -lrandom"), nil, 0, nil
 				default:
 					return nil, nil, -1, fmt.Errorf("the command executor was called too many times")
 				}
 			},
 		}},
-		OptionForceStaticLinkPatterns([]string{"libav*"}),
-		OptionForceDynamicLinkPatterns([]string{"libvlc", "libandroid"}),
+		OptionErasePatterns{"-lrandom"},
+		OptionForceStaticLinkPatterns{"libav*"},
+		OptionForceDynamicLinkPatterns{"libvlc", "libandroid"},
 	)
 	output, errMsg, exitCode, err := pkgConfig.Run(
 		ctx,
-		"--random-arg", "--libs-only-l", "libpthread", "libm", "libavcodec", "libvlc",
+		"--random-arg", "--libs-only-l", "libpthread", "libm", "librandom", "libavcodec", "libvlc",
 	)
 	require.NoError(t, err)
 	require.Equal(t, 0, exitCode)

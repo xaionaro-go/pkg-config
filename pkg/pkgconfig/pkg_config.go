@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/IGLOU-EU/go-wildcard"
 	"github.com/facebookincubator/go-belt/tool/logger"
 )
 
@@ -40,6 +39,33 @@ func (p *PkgConfig) Run(
 	defer func() {
 		logger.Debugf(ctx, "Run result: <%v> <%v> %d <%v>", strings.Join(_ret, " "), _errMsg, _exitCode, _err)
 	}()
+
+	output, errMsg, exitMsg, err := p.getFullOutput(ctx, args...)
+	if err != nil {
+		return output, errMsg, exitMsg, err
+	}
+
+	return p.filterOutput(ctx, output), errMsg, exitMsg, err
+}
+
+func (p *PkgConfig) filterOutput(
+	_ context.Context,
+	output []string,
+) []string {
+	var result []string
+	for _, word := range output {
+		if p.ErasePatterns.Match(word) {
+			continue
+		}
+		result = append(result, word)
+	}
+	return result
+}
+
+func (p *PkgConfig) getFullOutput(
+	ctx context.Context,
+	args ...string,
+) (_ret []string, _errMsg string, _exitCode int, _err error) {
 	// TODO: split this function
 
 	isLibLink := false
@@ -76,21 +102,15 @@ func (p *PkgConfig) Run(
 	var dynamicLibs []string
 	for _, lib := range libs {
 		linkType := libLinkTypeAuto
-		for _, pattern := range p.ForceDynamicLinkPatterns {
-			if wildcard.Match(pattern, lib) {
-				linkType = libLinkTypeDynamic
-				break
-			}
+		if p.ForceDynamicLinkPatterns.Match(lib) {
+			linkType = libLinkTypeDynamic
 		}
 
-		for _, pattern := range p.ForceStaticLinkPatterns {
-			if wildcard.Match(pattern, lib) {
-				if linkType == libLinkTypeDynamic {
-					return nil, "", -1, fmt.Errorf("library '%s' is forced to be both dynamically and statically linked", lib)
-				}
-				linkType = libLinkTypeStatic
-				break
+		if p.ForceStaticLinkPatterns.Match(lib) {
+			if linkType == libLinkTypeDynamic {
+				return nil, "", -1, fmt.Errorf("library '%s' is forced to be both dynamically and statically linked", lib)
 			}
+			linkType = libLinkTypeStatic
 		}
 
 		switch linkType {
@@ -140,11 +160,8 @@ func (p *PkgConfig) Run(
 			libName := "lib" + word[2:]
 
 			forceDynamic := false
-			for _, pattern := range p.ForceDynamicLinkPatterns {
-				if wildcard.Match(pattern, libName) {
-					forceDynamic = true
-					break
-				}
+			if p.ForceDynamicLinkPatterns.Match(libName) {
+				forceDynamic = true
 			}
 
 			if forceDynamic {

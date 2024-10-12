@@ -52,6 +52,11 @@ func main() {
 
 	var opts pkgconfig.Options
 
+	erasePatterns := parseList(os.Getenv(consts.EnvVarEraseList))
+	if len(erasePatterns) > 0 {
+		opts = append(opts, pkgconfig.OptionErasePatterns(erasePatterns))
+	}
+
 	staticLibsPatterns := parseList(os.Getenv(consts.EnvVarStaticLibsList))
 	if len(staticLibsPatterns) > 0 {
 		opts = append(opts, pkgconfig.OptionForceStaticLinkPatterns(staticLibsPatterns))
@@ -78,14 +83,14 @@ func main() {
 
 func parseList(
 	input string,
-) []string {
-	var result []string
+) pkgconfig.Patterns {
+	var result pkgconfig.Patterns
 	for _, w := range strings.Split(input, ",") {
 		word := strings.Trim(w, " ")
 		if len(word) == 0 {
 			continue
 		}
-		result = append(result, word)
+		result = append(result, pkgconfig.Pattern(word))
 	}
 	return result
 }
