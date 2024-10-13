@@ -21,4 +21,8 @@ var (
 	// EnvVarLogFile is the key of the environment variable that
 	// contains the path to the file that will be used to dump logs to.
 	EnvVarLogFile = EnvVar("PKG_CONFIG_WRAPPER_LOG")
+
+	// EnvVarLogLevel is the key of the environment variable that
+	// contains the logging level setting.
+	EnvVarLogLevel = EnvVar("PKG_CONFIG_WRAPPER_LOG_LEVEL")
 )

@@ -15,9 +15,19 @@ import (
 )
 
 func ctx() context.Context {
+	logLevel := logger.LevelPanic
+
+	logLevelString := os.Getenv(consts.EnvVarLogLevel)
+	if logLevelString != "" {
+		err := logLevel.Set(logLevelString)
+		if err != nil {
+			panic(err)
+		}
+	}
+
 	ctx := context.Background()
 	ll := xlogrus.DefaultLogrusLogger()
-	l := xlogrus.New(ll).WithLevel(logger.LevelTrace)
+	l := xlogrus.New(ll).WithLevel(logLevel)
 	ctx = logger.CtxWithLogger(ctx, l)
 
 	if !func() bool {
@@ -36,6 +46,7 @@ func ctx() context.Context {
 		return true
 	}() {
 		ll.Formatter.(*logrus.TextFormatter).ForceColors = true
+		ll.SetOutput(os.Stderr)
 	}
 	return ctx
 }
